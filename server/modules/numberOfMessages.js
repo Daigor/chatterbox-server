@@ -1,4 +1,3 @@
-
 var fs = require('fs');
 var _ = require('../../node_modules/underscore/underscore.js');
 module.exports = function(){

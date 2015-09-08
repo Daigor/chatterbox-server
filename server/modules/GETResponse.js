@@ -2,13 +2,16 @@
   var _ = require('../../node_modules/underscore/underscore.js');
   var numberOfMessages = require( './numberOfMessages.js');
   var sortByObjectId = require('./sortByObjectId.js');
+  var urlFiles = require('./urlFiles.js');
 
-    var messageNumber = numberOfMessages();
-    //
-    var dirFiles = fs.readdirSync('./' + urlFiles.join('/')).sort(sortByObjectId);
+
+  module.exports = function(request){
+    var responseBody = {results:[]};
+    var urlArray = urlFiles(request)
+    var dirFiles = fs.readdirSync('./' + urlArray.join('/')).sort(sortByObjectId);
    
     _.each(dirFiles, function(message, index){
-      message = require('./' + urlFiles.join('/') + '/' + message);
+      message = require('../' + urlArray.join('/') + '/' + message);
       responseBody.results[dirFiles.length - index - 1] = {
         username: message.username,
         message: message.message ,
@@ -16,3 +19,5 @@
         objectId: message.objectId
       };
     });
+    return responseBody;
+  };
