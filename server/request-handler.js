@@ -13,6 +13,8 @@ this file and include it in basic-server.js so that it actually works.
 **************************************************************/
 var fs = require('fs');
 
+var _ = require( '../node_modules/underscore/underscore.js' );
+
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   //
@@ -42,29 +44,58 @@ var requestHandler = function(request, response) {
   var path = '.';
 
   //function checks if directory names in urlFiles array correspond to a branch of the directory tree whos root is path
-  var checkUrl = function(path){
-    fs.readdir(path, function(err, dirFiles){
-      if(err){
-        throw err;
-      } else {
-        if(dirFiles.indexOf(urlFiles[urlFilesIndex]) !== -1){
-          if(urlFilesIndex === urlFiles.length - 1){
-            statusCode = 200;
-            writeResponse();
+  // var checkUrl = function(path){
+  //   debugger;
+  //   var dirFiles = fs.readdirSync(path);
+  //   if(dirFiles.indexOf(urlFiles[urlFilesIndex]) !== -1){
+  //     if(urlFilesIndex === urlFiles.length -1 ){
+  //       if( request.method === 'GET' || request.method === 'OPTIONS') {
+  //         return 200;
+  //       } else if( request.method === 'POST' ) {
+  //         return 201;
+  //       }
+  //     } else {
+  //       path += '/' + urlFiles[urlFilesIndex];
+  //       urlFilesIndex++;
+  //       return checkUrl(path);
+  //     }
+  //   } else {
+  //     return 404;
+  //   }
+  // };
+  // statusCode = checkUrl(path);
+  statusCode = 200;
+
+  if(request.method === 'POST'){
+    var data = '';
+    request.on('data', function(chunk){
+      data += chunk;
+    });
+    request.on('end', function(){
+      data = JSON.parse(data);
+      var numberOfMessages = _.reduce(fs.readdirSync('./classes/messages'), function(accumulator, message){
+          message = message.split( '' );
+          message.splice( 0, 7 );
+          message.splice( message.length - 3, 3 );
+          message = message.join( '' );
+          if(accumulator < +message){
+            return +message;
           } else {
-            path += '/' + urlFiles[urlFilesIndex];
-            urlFilesIndex++;
-            checkUrl(path);  
+            return accumulator;
           }
-        } else {
-          statusCode = 404;
-          writeResponse(); 
-        }
-      }
-    })
+      }, 0) || 0;
+      console.log( numberOfMessages );
+      var fileName = "classes/messages/message" + (numberOfMessages + 1) + ".js";
+
+      var fileContent = "module.exports.username = " + data.username + ';\n'
+                        + "module.exports.message = " + data.text + ';\n'
+                        + "module.exports.objectId = " + (numberOfMessages + 1) + ';';
+
+      fs.writeFileSync(fileName, fileContent);
+    });
   };
-  checkUrl(path);
   
+
   // See the note below about CORS headers.
 
   // These headers will allow Cross-Origin Resource Sharing (CORS).
@@ -93,22 +124,24 @@ var requestHandler = function(request, response) {
   // other than plain text, like JSON or HTML.
   headers['Content-Type'] = "text/plain";
 
-  var writeResponse = function(){
+  // .writeHead() writes to the request line and headers of the response,
+  // which includes the status and all headers.
+  response.writeHead(statusCode, headers);
 
-    // .writeHead() writes to the request line and headers of the response,
-    // which includes the status and all headers.
-    response.writeHead(statusCode, headers);
+  // Make sure to always call response.end() - Node may not send
+  // anything back to the client until you do. The string you pass to
+  // response.end() will be the body of the response - i.e. what shows
+  // up in the browser.
+  //
+  // Calling .end "flushes" the response's internal buffer, forcing
+  // node to actually send all the data over to the client.
 
-    // Make sure to always call response.end() - Node may not send
-    // anything back to the client until you do. The string you pass to
-    // response.end() will be the body of the response - i.e. what shows
-    // up in the browser.
-    //
-    // Calling .end "flushes" the response's internal buffer, forcing
-    // node to actually send all the data over to the client.
+  var responseBody = {
+    results: []
+  };
 
-    response.end(statusCode.toString());
-  }
+  response.end(JSON.stringify(responseBody));
+
 };
 
 module.exports.requestHandler = requestHandler;
