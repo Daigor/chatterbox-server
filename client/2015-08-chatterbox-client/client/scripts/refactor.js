@@ -24,7 +24,7 @@ var Message = Backbone.Model.extend({
   url: 'http://127.0.0.1:3000/classes/messages/',
   defaults: {
     username: '',
-    text: ''
+    message: ''
   }
 });
 
@@ -65,7 +65,7 @@ var FormView = Backbone.View.extend({
     var $text = this.$('#message');
     this.collection.create({
       username: window.location.search.substr(10),
-      text: $text.val()
+      message: $text.val()
     });
     $text.val('');
   },
@@ -90,7 +90,7 @@ var MessageView = Backbone.View.extend({
 
   template: _.template('<div class="chat" data-id="<%- objectId %>"> \
                           <div class="user"><%- username %></div> \
-                          <div class="text"><%- text %></div> \
+                          <div class="text"><%- message %></div> \
                         </div>'),
 
   render: function() {

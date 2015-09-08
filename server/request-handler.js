@@ -34,7 +34,7 @@ var requestHandler = function(request, response) {
   //splits the url into its directory names
   var urlFiles = request.url.split('/');
   urlFiles.splice(0,1);
-  if(urlFiles[urlFiles.length - 1].charAt(0) === '?'){
+  if( urlFiles[urlFiles.length - 1].charAt(0) === '?' || urlFiles[urlFiles.length - 1] === '' ){
     urlFiles.splice(urlFiles.length - 1, 1);  
   }
   //url files is an array of strings
@@ -44,27 +44,28 @@ var requestHandler = function(request, response) {
   var path = '.';
 
   //function checks if directory names in urlFiles array correspond to a branch of the directory tree whos root is path
-  // var checkUrl = function(path){
-  //   debugger;
-  //   var dirFiles = fs.readdirSync(path);
-  //   if(dirFiles.indexOf(urlFiles[urlFilesIndex]) !== -1){
-  //     if(urlFilesIndex === urlFiles.length -1 ){
-  //       if( request.method === 'GET' || request.method === 'OPTIONS') {
-  //         return 200;
-  //       } else if( request.method === 'POST' ) {
-  //         return 201;
-  //       }
-  //     } else {
-  //       path += '/' + urlFiles[urlFilesIndex];
-  //       urlFilesIndex++;
-  //       return checkUrl(path);
-  //     }
-  //   } else {
-  //     return 404;
-  //   }
-  // };
-  // statusCode = checkUrl(path);
-  statusCode = 200;
+  var checkUrl = function(path){
+    var dirFiles = fs.readdirSync(path);
+    if(dirFiles.indexOf(urlFiles[urlFilesIndex]) !== -1){
+      if(urlFilesIndex === urlFiles.length -1 ){
+        if( request.method === 'GET') {
+          return 200;
+        } else if( request.method === 'POST' ) {
+          return 201;
+        } else if (request.method === 'OPTIONS'){
+          return 200;
+        }
+      } else {
+        path += '/' + urlFiles[urlFilesIndex];
+        urlFilesIndex++;
+        return checkUrl(path);
+      }
+    } else {
+      return 404;
+    }
+  };
+
+  statusCode = checkUrl(path);
 
   if(request.method === 'POST'){
     var data = '';
@@ -84,16 +85,30 @@ var requestHandler = function(request, response) {
             return accumulator;
           }
       }, 0) || 0;
-      console.log( numberOfMessages );
       var fileName = "classes/messages/message" + (numberOfMessages + 1) + ".js";
 
-      var fileContent = "module.exports.username = " + data.username + ';\n'
-                        + "module.exports.message = " + data.text + ';\n'
-                        + "module.exports.objectId = " + (numberOfMessages + 1) + ';';
+      var fileContent = 'module.exports.username = \"' + data.username + '\";\n'
+                        + 'module.exports.message = \"' + data.message + '\";\n'
+                        + 'module.exports.objectId = ' + (numberOfMessages + 1) + ';';
 
       fs.writeFileSync(fileName, fileContent);
     });
+  }
+
+  var responseBody = {
+    results: []
   };
+  
+  if(request.method === "GET"){
+    _.each(fs.readdirSync('./classes/messages'), function(message, index){
+      message = require('./classes/messages/' + message);
+      responseBody.results[index] = {
+        username: message.username,
+        message: message.message ,
+        objectId: message.objectId
+      };
+    });
+  }
   
 
   // See the note below about CORS headers.
@@ -136,9 +151,6 @@ var requestHandler = function(request, response) {
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
 
-  var responseBody = {
-    results: []
-  };
 
   response.end(JSON.stringify(responseBody));
 
