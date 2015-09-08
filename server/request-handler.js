@@ -69,7 +69,7 @@ var requestHandler = function(request, response) {
 
   statusCode = checkUrl(path);
 
-  if(request.method === 'POST'){
+  if(request.method === 'POST' && statusCode === 201){
     var data = '';
     request.on('data', function(chunk){
       data += chunk;
@@ -77,15 +77,19 @@ var requestHandler = function(request, response) {
     request.on('end', function(){
       data = JSON.parse(data);
       var messageNumber = numberOfMessages();
-      var fileName = "classes/messages/message" + (messageNumber + 1) + ".js";
-
+      var dirFiles = fs.readdirSync('./classes');
+      if(dirFiles.indexOf(data.roomname) === -1){
+        fs.mkdirSync('./classes/' + data.roomname);
+      }
+      var messagesFileName = "classes/messages/message" + (messageNumber + 1) + ".js";
+      var roomFileName = "classes/" + data.roomname + "/message" + (messageNumber + 1) + ".js";
       var fileContent = 'module.exports.username = \"' + data.username + '\";\n'
                         + 'module.exports.message = \"' + data.message + '\";\n'
                         + 'module.exports.roomname = \"' + data.roomname + '\";\n'
                         + 'module.exports.objectId = ' + (messageNumber + 1) + ';';
-
-      fs.writeFileSync(fileName, fileContent);
-    });
+      fs.writeFileSync(roomFileName, fileContent);
+      fs.writeFileSync(messagesFileName, fileContent);
+    });     
   }
 
   var responseBody = {
@@ -93,26 +97,31 @@ var requestHandler = function(request, response) {
   };
   
 
-  if(request.method === "GET"){
+  if(request.method === "GET" && statusCode === 200){
     var messageNumber = numberOfMessages();
-    for(var i = messageNumber; i >= 1; i-- ){
-      var message = require('./classes/messages/message' + i);
-      responseBody.results[messageNumber - i] = {
+    //
+    var dirFiles = fs.readdirSync('./' + urlFiles.join('/')).sort(function(msg1,msg2){
+      var num1 = msg1.split('');
+      num1.splice( msg1.length - 3, 3 );
+      num1.splice( 0, 7 )
+      num1 = num1.join('');
+      var num2 = msg2.split('');
+      num2.splice( msg2.length - 3, 3 );
+      num2.splice( 0, 7 )
+      num2 = num2.join('');
+      console.log( num1, num2 );
+      return +num1 - +num2;
+    });
+   
+    _.each(dirFiles, function(message, index){
+      message = require('./' + urlFiles.join('/') + '/' + message);
+      responseBody.results[dirFiles.length - index - 1] = {
         username: message.username,
         message: message.message ,
         roomname: message.roomname,
         objectId: message.objectId
       };
-    }
-    // _.each(fs.readdirSync('./classes/messages'), function(message, index){
-    //   message = require('./classes/messages/' + message);
-    //   responseBody.results[numberOfMessages - index] = {
-    //     username: message.username,
-    //     message: message.message ,
-    //     roomname: message.roomname,
-    //     objectId: message.objectId
-    //   };
-    // });
+    });
   }
   
 
