@@ -1,3 +1,4 @@
-module.exports.username = "";
-module.exports.message = "afdsfa";
+module.exports.username = "Allan";
+module.exports.message = "dfkljasd";
+module.exports.roomname = "lobby";
 module.exports.objectId = 7;

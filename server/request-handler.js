@@ -15,6 +15,8 @@ var fs = require('fs');
 
 var _ = require( '../node_modules/underscore/underscore.js' );
 
+var numberOfMessages = require( './modules/numberOfMessages.js');
+
 var requestHandler = function(request, response) {
   // Request and Response come from node's http module.
   //
@@ -74,22 +76,13 @@ var requestHandler = function(request, response) {
     });
     request.on('end', function(){
       data = JSON.parse(data);
-      var numberOfMessages = _.reduce(fs.readdirSync('./classes/messages'), function(accumulator, message){
-          message = message.split( '' );
-          message.splice( 0, 7 );
-          message.splice( message.length - 3, 3 );
-          message = message.join( '' );
-          if(accumulator < +message){
-            return +message;
-          } else {
-            return accumulator;
-          }
-      }, 0) || 0;
-      var fileName = "classes/messages/message" + (numberOfMessages + 1) + ".js";
+      var messageNumber = numberOfMessages();
+      var fileName = "classes/messages/message" + (messageNumber + 1) + ".js";
 
       var fileContent = 'module.exports.username = \"' + data.username + '\";\n'
                         + 'module.exports.message = \"' + data.message + '\";\n'
-                        + 'module.exports.objectId = ' + (numberOfMessages + 1) + ';';
+                        + 'module.exports.roomname = \"' + data.roomname + '\";\n'
+                        + 'module.exports.objectId = ' + (messageNumber + 1) + ';';
 
       fs.writeFileSync(fileName, fileContent);
     });
@@ -99,15 +92,27 @@ var requestHandler = function(request, response) {
     results: []
   };
   
+
   if(request.method === "GET"){
-    _.each(fs.readdirSync('./classes/messages'), function(message, index){
-      message = require('./classes/messages/' + message);
-      responseBody.results[index] = {
+    var messageNumber = numberOfMessages();
+    for(var i = messageNumber; i >= 1; i-- ){
+      var message = require('./classes/messages/message' + i);
+      responseBody.results[messageNumber - i] = {
         username: message.username,
         message: message.message ,
+        roomname: message.roomname,
         objectId: message.objectId
       };
-    });
+    }
+    // _.each(fs.readdirSync('./classes/messages'), function(message, index){
+    //   message = require('./classes/messages/' + message);
+    //   responseBody.results[numberOfMessages - index] = {
+    //     username: message.username,
+    //     message: message.message ,
+    //     roomname: message.roomname,
+    //     objectId: message.objectId
+    //   };
+    // });
   }
   
 
@@ -150,8 +155,6 @@ var requestHandler = function(request, response) {
   //
   // Calling .end "flushes" the response's internal buffer, forcing
   // node to actually send all the data over to the client.
-
-
   response.end(JSON.stringify(responseBody));
 
 };
